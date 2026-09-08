@@ -1276,6 +1276,7 @@ window.closeWuxing = closeWuxing;
 数据源：云函数代理（已测试正常）
 缓存策略：打开时先显示缓存，后台自动刷新，刷新成功后更新显示
 ============================================================ */
+var WORKER_URL = 'https://1481152118-6i1ka4cm55.ap-guangzhou.tencentscf.com';
 var NEWS_API_ZHIHU = WORKER_URL + '/zhihu';
 var NEWS_API_TOUTIAO = WORKER_URL + '/toutiao';
 var newsCategory = 'zhihu'; // 'zhihu' 知乎热榜, 'toutiao' 头条热搜
@@ -1451,7 +1452,6 @@ function saveSyncMeta(m){ DataStore.write(SYNC_META_KEY, m); }
    AES 数据加密（Web Crypto API，零依赖）
 ============================================================ */
 var ENC_KEY = 'jintian-app-2026-aes-key-0001x'; // 32字节密钥
-var WORKER_URL = 'https://1481152118-6i1ka4cm55.ap-guangzhou.tencentscf.com'; // Cloudflare Worker 地址（创建后替换）
 var APP_VERSION = '2026.09.08.1'; // 应用版本号，每次更新递增
 
 /* ---------- 自动更新功能 ---------- */
