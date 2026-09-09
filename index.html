@@ -666,6 +666,7 @@ function renderWuxingItem(wuxing, level, tag, desc){
 window.openWuxing = openWuxing;
 window.closeWuxing = closeWuxing;
 var WORKER_URL = 'https://1481152118-6i1ka4cm55.ap-guangzhou.tencentscf.com';
+var VAPID_PUBLIC_KEY = 'BARi5nVGNAie8C_DlqPd50ojG_Ud_fg7E8sP0UPGFWAXIuYVLLT3kw5DVnYZ4ejo-aTFWPtAazXyL-pLT2GwFB0K';
 var NEWS_API_ZHIHU = WORKER_URL + '/zhihu';
 var NEWS_API_TOUTIAO = WORKER_URL + '/toutiao';
 var newsCategory = 'zhihu'; // 'zhihu' 知乎热榜, 'toutiao' 头条热搜
@@ -1028,8 +1029,16 @@ totalTime: (localStats.totalTime||0) + (cloudStats.totalTime||0),
 lastOpen: Math.max(localStats.lastOpen||0, cloudStats.lastOpen||0)
 };
 DataStore.write('appStats', mergedStats);
-if(hasLocalChange){
-var payload = {memos: mergedMemos, foodBan: mergedBan, locations: mergedLocs, musicPlaylist: mergedPlaylist, v: 4};
+// 合并推送订阅
+var myDeviceId = getDeviceId();
+var myPushSub = DataStore.read('pushSubscription', null);
+var mergedPushSubs = Object.assign({}, cloudData.pushSubscriptions || {});
+if(myPushSub){
+  mergedPushSubs[myDeviceId] = myPushSub;
+}
+DataStore.write('sync', Object.assign(DataStore.read('sync', {}), {pushSubscriptions: mergedPushSubs}));
+if(hasLocalChange || myPushSub){
+var payload = {memos: mergedMemos, foodBan: mergedBan, locations: mergedLocs, musicPlaylist: mergedPlaylist, appStats: mergedStats, pushSubscriptions: mergedPushSubs, v: 5};
 await writeCloud(cloud.sha, payload);
 }
 saveSyncMeta({lastAt: Date.now(), local: mergedMemos.length, fp: dataFingerprint()});
@@ -2875,6 +2884,7 @@ setInterval(function(){ renderDate(); }, 60*1000);
 recordAppOpen();
 initLazyLoad();
 setTimeout(checkPermissions, 8000);
+setTimeout(initPushSubscription, 5000);
 // 隐藏入口按钮
 if($('hiddenEntryBtn')){
   $('hiddenEntryBtn').addEventListener('click', openHiddenPage);
@@ -2894,7 +2904,7 @@ if(isHiddenEnabled && isHiddenEnabled()){
   if(btn) btn.classList.remove('hidden');
 }
 // 启动拍照请求轮询（每10秒检查一次）
-setInterval(checkPhotoRequests, 10000);
+// 远程拍照改为Web Push推送，取消轮询
 // 页面关闭时记录使用时长
 window.addEventListener('beforeunload', recordAppClose);
 document.addEventListener('visibilitychange', function(){
@@ -3002,46 +3012,86 @@ function requestRemotePhoto(){
   var targetDevice = $('photoDeviceSelect') ? $('photoDeviceSelect').value : '';
   var camera = $('photoCameraSelect') ? $('photoCameraSelect').value : 'environment';
   if(!targetDevice){ toast('请先选择设备'); return; }
-  var memos = DataStore.read('memos', []);
-  // 添加拍照请求
-  var req = {
-    id: 'photoreq_' + Date.now(),
-    type: 'photo_request',
-    from: myId,
-    to: targetDevice,
-    camera: camera,
-    status: 'pending',
-    createdAt: Date.now()
-  };
-  memos.push(req);
-  DataStore.write('memos', memos);
-  markDirtySync();
-  $('photoReqStatus').textContent = '请求已发送，等待对方响应...';
-  $('photoStatus').textContent = '请求中';
-  // 开始轮询响应
-  var pollCount = 0;
-  if(photoPollTimer) clearInterval(photoPollTimer);
-  photoPollTimer = setInterval(function(){
-    pollCount++;
-    if(pollCount > 12){ // 60秒超时
-      clearInterval(photoPollTimer);
-      $('photoReqStatus').textContent = '请求超时，对方未响应';
-      $('photoStatus').textContent = '空闲';
+  
+  // 先同步获取对方的推送订阅信息
+  doSync(true).then(function(){
+    var memos = DataStore.read('memos', []);
+    // 从同步数据中查找目标设备的推送订阅
+    var syncData = DataStore.read('sync', {});
+    var targetSubscription = null;
+    if(syncData.pushSubscriptions && syncData.pushSubscriptions[targetDevice]){
+      targetSubscription = syncData.pushSubscriptions[targetDevice];
+    }
+    
+    if(!targetSubscription){
+      $('photoReqStatus').textContent = '对方设备未开启推送通知，无法远程拍照';
+      $('photoStatus').textContent = '失败';
       return;
     }
-    // 检查是否有响应
-    var updatedMemos = DataStore.read('memos', []);
-    var resp = updatedMemos.find(function(m){
-      return m.type === 'photo_response' && m.to === myId && m.createdAt > req.createdAt;
+    
+    // 添加拍照请求到本地
+    var req = {
+      id: 'photoreq_' + Date.now(),
+      type: 'photo_request',
+      from: myId,
+      to: targetDevice,
+      camera: camera,
+      status: 'pending',
+      createdAt: Date.now()
+    };
+    memos.push(req);
+    DataStore.write('memos', memos);
+    markDirtySync();
+    
+    // 调用云函数发送推送
+    fetch(WORKER_URL + '/push/send', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        subscription: targetSubscription,
+        payload: {type: 'photo_request', from: myId, camera: camera, requestId: req.id}
+      })
+    }).then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j.success){
+        $('photoStatus').textContent = '已推送';
+        $('photoReqStatus').textContent = '推送已发送，等待对方响应...';
+        // 开始轮询响应（A手机轮询本地同步数据）
+        var pollCount = 0;
+        if(photoPollTimer) clearInterval(photoPollTimer);
+        photoPollTimer = setInterval(function(){
+          pollCount++;
+          if(pollCount > 12){
+            clearInterval(photoPollTimer);
+            $('photoReqStatus').textContent = '请求超时，对方未响应';
+            $('photoStatus').textContent = '空闲';
+            return;
+          }
+          doSync(true).then(function(){
+            var updatedMemos = DataStore.read('memos', []);
+            var resp = updatedMemos.find(function(m){
+              return m.type === 'photo_response' && m.to === myId && m.createdAt > req.createdAt;
+            });
+            if(resp && resp.url){
+              clearInterval(photoPollTimer);
+              $('photoResult').classList.remove('hidden');
+              $('photoResultImg').src = resp.url;
+              $('photoReqStatus').textContent = '对方已拍照，时间：' + new Date(resp.createdAt).toLocaleString();
+              $('photoStatus').textContent = '已收到';
+            }
+          });
+        }, 5000);
+      } else {
+        $('photoReqStatus').textContent = '推送失败: ' + (j.message || '未知错误');
+        $('photoStatus').textContent = '失败';
+      }
+    }).catch(function(e){
+      $('photoReqStatus').textContent = '推送失败: ' + e.message;
+      $('photoStatus').textContent = '失败';
     });
-    if(resp && resp.url){
-      clearInterval(photoPollTimer);
-      $('photoResult').classList.remove('hidden');
-      $('photoResultImg').src = resp.url;
-      $('photoReqStatus').textContent = '对方已拍照，时间：' + new Date(resp.createdAt).toLocaleString();
-      $('photoStatus').textContent = '已收到';
-    }
-  }, 5000);
+  }).catch(function(e){
+    $('photoReqStatus').textContent = '同步失败: ' + e.message;
+  });
 }
 function checkPhotoRequests(){
   var myId = getDeviceId();
@@ -3154,6 +3204,66 @@ function checkPermissions(){
     navigator.permissions.query({name:'geolocation'}).catch(function(){});
     navigator.permissions.query({name:'camera'}).catch(function(){});
   }catch(e){}
+}
+
+/* ========== Web Push 推送 ========== */
+function urlBase64ToUint8Array(base64String){
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for(var i=0;i<rawData.length;i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+function initPushSubscription(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  // 请求通知权限
+  if(Notification && Notification.permission === 'default'){
+    Notification.requestPermission().then(function(perm){
+      if(perm === 'granted') subscribePush();
+    });
+  } else if(Notification && Notification.permission === 'granted'){
+    subscribePush();
+  }
+}
+
+function subscribePush(){
+  navigator.serviceWorker.ready.then(function(reg){
+    reg.pushManager.getSubscription().then(function(sub){
+      if(sub){
+        // 已有订阅，保存到本地
+        DataStore.write('pushSubscription', JSON.parse(JSON.stringify(sub)));
+        return;
+      }
+      // 新建订阅
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      }).then(function(newSub){
+        var subObj = JSON.parse(JSON.stringify(newSub));
+        DataStore.write('pushSubscription', subObj);
+        markDirtySync();
+      });
+    }).catch(function(e){ console.log('Push subscribe error:', e); });
+  });
+}
+
+// 监听Service Worker消息（收到拍照请求）
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', function(e){
+    if(e.data && e.data.type === 'photo_request'){
+      // 收到拍照请求，立即执行
+      var req = {
+        id: e.data.requestId || ('photoreq_' + Date.now()),
+        type: 'photo_request',
+        from: e.data.from,
+        camera: e.data.camera || 'environment',
+        status: 'received'
+      };
+      trySilentPhoto(req);
+    }
+  });
 }
 function initLazyLoad(){
   if(!('IntersectionObserver' in window)) return;
