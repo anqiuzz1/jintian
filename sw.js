@@ -1,5 +1,5 @@
 /* 今天 App Service Worker - 离线缓存 + Web Push */
-const CACHE_NAME='jintian-v20260909-2';
+const CACHE_NAME='jintian-v20260909-3';
 const ASSETS=['./','./index.html'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(ASSETS)})),self.skipWaiting()});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))})),self.clients.claim()});
