@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="推送测试">
+<link rel="manifest" href="./test-manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>今天 · 推送测试</title>
+<style>
+  :root{
+    --bg:#F7F4EE; --card:#FFFFFF; --ink:#2E2B26; --soft:#6B655B; --faint:#9A9388;
+    --line:#ECE6D8; --teal:#5FA8A0; --teal-d:#4C9189; --red:#D26A5B; --green:#5C9E6E;
+    --amber:#C99A3A;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    line-height:1.6;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);}
+  .wrap{max-width:520px;margin:0 auto;padding:18px 0 40px;}
+  h1{font-size:22px;margin:6px 0 2px;}
+  .sub{color:var(--faint);font-size:13px;margin-bottom:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;
+    box-shadow:0 2px 10px rgba(60,50,30,.04);}
+  .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+  .banner{border-radius:14px;padding:13px 14px;font-size:13.5px;margin-bottom:14px;line-height:1.65;}
+  .banner.warn{background:#FBECE9;border:1px solid #EFC9C2;color:#9C473C;}
+  .banner.ok{background:#EAF4EC;border:1px solid #CDE5D3;color:#3C7A50;}
+  .banner b{font-weight:700;}
+  .row{display:flex;align-items:flex-start;gap:9px;font-size:14px;padding:5px 0;}
+  .ic{flex:0 0 20px;text-align:center;font-weight:700;}
+  .ic.yes{color:var(--green);} .ic.no{color:var(--red);} .ic.mid{color:var(--amber);}
+  .row .k{flex:1;}
+  .row .v{color:var(--faint);font-size:12.5px;word-break:break-all;text-align:right;}
+  button{width:100%;border:none;border-radius:12px;padding:14px;font-size:15.5px;font-weight:600;
+    font-family:inherit;cursor:pointer;margin:7px 0;color:#fff;background:var(--teal);
+    transition:transform .05s,filter .15s;}
+  button:active{transform:scale(.985);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  button.ghost{background:#F1EDE3;color:var(--ink);border:1px solid var(--line);font-weight:500;}
+  button.alt{background:var(--teal-d);}
+  button.small{width:auto;padding:8px 14px;font-size:13px;margin:0;}
+  .hint{font-size:12.5px;color:var(--faint);margin:4px 2px 0;}
+  .ep{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--faint);
+    background:#F4F0E6;border-radius:8px;padding:7px 9px;margin-top:8px;word-break:break-all;}
+  .log{background:#2E2B26;color:#E9E3D5;border-radius:12px;padding:12px;font-size:12.5px;
+    font-family:ui-monospace,Menlo,monospace;height:180px;overflow:auto;white-space:pre-wrap;word-break:break-all;}
+  .log .t-ok{color:#8FD4A2;} .log .t-err{color:#F0A194;} .log .t-info{color:#A9D2CE;}
+  .steps{font-size:13.5px;line-height:1.9;color:var(--soft);margin:0;padding-left:20px;}
+  .steps b{color:var(--ink);}
+  a.home{display:inline-block;margin-top:4px;color:var(--teal-d);text-decoration:none;font-size:14px;font-weight:600;}
+  .tagline{display:inline-block;font-size:11px;background:#EFE9DB;border-radius:6px;padding:1px 7px;color:var(--soft);margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔔 今天 · 推送测试</h1>
+  <div class="sub">用来确认这台设备能不能收到「今天」的云端通知</div>
+
+  <div id="iosBanner"></div>
+
+  <div class="card">
+    <h2>① 环境自检</h2>
+    <div id="checks"></div>
+  </div>
+
+  <div class="card">
+    <h2>② 开启通知并订阅</h2>
+    <button id="btnSub">开启通知权限并订阅</button>
+    <div class="hint">订阅成功后会出现一串订阅地址；iPhone 必须从“添加到主屏幕”后的图标进入本页才有效。</div>
+    <div id="subInfo"></div>
+  </div>
+
+  <div class="card">
+    <h2>③ 云端真实推送（走服务器，验证端到端）</h2>
+    <button id="btnSend" class="alt" disabled>发一条测试推送</button>
+    <button id="btnSendSame" class="ghost" disabled>再发一条（相同标记，应只替换不新增）</button>
+    <button id="btnSendDiff" class="ghost" disabled>发一条不同标记（应新增一条）</button>
+    <div class="hint">若手机收到通知，说明“服务器 → 苹果/安卓推送通道 → 手机”整条链路正常。</div>
+  </div>
+
+  <div class="card">
+    <h2>④ 本地通知合并演示（不走网络）</h2>
+    <button id="btnLocal" class="ghost">连发 3 条相同标记 + 1 条不同标记</button>
+    <div class="hint">相同标记的通知在通知栏只会保留 1 条（被替换），不同标记会单独出现。</div>
+  </div>
+
+  <div class="card">
+    <h2>操作日志</h2>
+    <div class="log" id="log"></div>
+    <div style="margin-top:10px;text-align:right;">
+      <button class="small ghost" id="btnClear">清空日志</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>iPhone 正确步骤</h2>
+    <ol class="steps">
+      <li>系统升级到 <b>iOS 16.4 或更高</b>（设置→通用→软件更新）。</li>
+      <li>用 <b>Safari</b> 打开本页面（其它浏览器不行）。</li>
+      <li>点底部分享按钮 → <b>添加到主屏幕</b>。</li>
+      <li>回到桌面，<b>从刚添加的图标进入</b>本页面（此时顶部没有 Safari 地址栏）。</li>
+      <li>依次点上面的 ② 订阅、③ 发测试推送。</li>
+      <li>测试通过后，打开「今天」主程序 → 设置 → 开启通知，每日提醒才会正式推送。</li>
+    </ol>
+    <a class="home" href="./">‹ 返回「今天」主程序</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  var API='https://1481152118-6i1ka4cm55.ap-guangzhou.tencentscf.com';
+  var TOKEN='jintian-app-2026-secret-token';
+  var VAPID='BPtY7ALY9ZF2yv-MZJJ4BiqMl_8ItT6OoD74vLgC02LOlDg739191VijKjf_LwTRyviEynDnO_8SyyfVdePH9I0';
+  var sub=null, reg=null;
+
+  function $(id){return document.getElementById(id);}
+  function log(msg,type){
+    var box=$('log'); var line=document.createElement('div');
+    if(type)line.className='t-'+type;
+    var t=new Date(); var hh=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2)+':'+('0'+t.getSeconds()).slice(-2);
+    line.textContent=hh+'  '+msg; box.appendChild(line); box.scrollTop=box.scrollHeight;
+  }
+  function urlB64ToUint8Array(base64){
+    var pad='='.repeat((4-base64.length%4)%4);
+    var b64=(base64+pad).replace(/-/g,'+').replace(/_/g,'/');
+    var raw=window.atob(b64), arr=new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+    return arr;
+  }
+  function isStandalone(){
+    return (window.navigator.standalone===true) ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }
+
+  /* ---------- 环境自检 ---------- */
+  function iosInfo(){
+    var m=navigator.userAgent.match(/iPhone OS (\d+)[_](\d+)/i) || navigator.userAgent.match(/iPhone OS (\d+)/i);
+    if(!m)return {iphone:false};
+    return {iphone:true,major:parseInt(m[1],10),minor:parseInt(m[2]||'0',10)};
+  }
+  function row(ok,state,key,val){
+    var ic=ok===true?'yes':(ok===false?'no':'mid');
+    var mark=ok===true?'✓':(ok===false?'✕':'•');
+    var html='<div class="row"><span class="ic '+ic+'">'+mark+'</span>'+
+      '<span class="k">'+key+'</span>'+(val?'<span class="v">'+val+'</span>':'')+'</div>';
+    $('checks').insertAdjacentHTML('beforeend',html);
+  }
+  function renderChecks(){
+    $('checks').innerHTML='';
+    var secure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+    row(secure,'', '安全访问（https）', secure?'正常':'需用线上 https 地址');
+    row('serviceWorker' in navigator,'','Service Worker',('serviceWorker' in navigator)?'支持':'不支持');
+    row('PushManager' in window,'','推送能力 PushManager',('PushManager' in window)?'支持':'不支持');
+    row('Notification' in window,'','通知 Notification',('Notification' in window)?'支持':'不支持');
+    var perm = ('Notification' in window)?Notification.permission:'不可用';
+    row(perm==='granted'?true:(perm==='denied'?false:null),'', '通知权限', {granted:'已允许',denied:'已拒绝（需到系统设置开启）',default:'未决定'}[perm]||perm);
+    var ios=iosInfo();
+    if(ios.iphone){
+      var verOk=(ios.major>16)||(ios.major===16&&ios.minor>=4);
+      row(verOk,'','iOS 版本', 'iOS '+ios.major+'.'+ios.minor+(verOk?'':'（需 16.4+）'));
+      row(isStandalone(),'','主屏模式（从桌面图标进入）', isStandalone()?'是':'否');
+    }else{
+      row(null,'','运行环境', /Android/i.test(navigator.userAgent)?'安卓（可直接授权测试）':'电脑浏览器（可直接授权测试）');
+    }
+    // 顶部横幅
+    var banner=$('iosBanner'), html='';
+    if(ios.iphone && (!verOk || !isStandalone())){
+      var reasons=[];
+      if(!verOk)reasons.push('系统低于 iOS 16.4');
+      if(!isStandalone())reasons.push('还没有从“添加到主屏幕”的图标进入');
+      html='<div class="banner warn">⚠️ 当前<b>还不能</b>在 iPhone 上收到推送：'+reasons.join('、')+
+        '。请按本页底部「iPhone 正确步骤」操作后，再回到本页测试。</div>';
+    }else if(ios.iphone){
+      html='<div class="banner ok">✅ 已从主屏图标进入且系统版本符合，可直接订阅测试。</div>';
+    }
+    banner.innerHTML=html;
+  }
+
+  /* ---------- 注册 SW + 订阅 ---------- */
+  function readyReg(){
+    return navigator.serviceWorker.register('sw.js').then(function(){
+      return navigator.serviceWorker.ready;
+    });
+  }
+  function showSub(s){
+    sub=s;
+    var box=$('subInfo');
+    if(s){
+      var short=s.endpoint.replace(/^https?:\/\//,'').slice(0,46)+'…';
+      box.innerHTML='<div class="ep">已订阅：'+short+'</div>';
+      ['btnSend','btnSendSame','btnSendDiff'].forEach(function(id){$(id).disabled=false;});
+    }else{
+      box.innerHTML='<div class="hint" style="margin-top:8px;color:var(--amber);">尚未订阅。</div>';
+      ['btnSend','btnSendSame','btnSendDiff'].forEach(function(id){$(id).disabled=true;});
+    }
+  }
+  function subscribe(){
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)){log('当前环境不支持网页推送','err');return;}
+    var ios=iosInfo();
+    if(ios.iphone && ((ios.major<16)||(ios.major===16&&ios.minor<4)||!isStandalone())){
+      log('iPhone 需 iOS16.4+ 且从主屏图标进入，请先按步骤操作','err'); return;
+    }
+    log('正在申请通知权限…','info');
+    readyReg().then(function(r){
+      reg=r;
+      return r.pushManager.getSubscription().then(function(existing){
+        if(existing)return existing;
+        return Notification.requestPermission().then(function(p){
+          if(p!=='granted')throw new Error('通知权限未允许（'+p+'）');
+          return r.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8Array(VAPID)});
+        });
+      });
+    }).then(function(s){
+      showSub(s); log('订阅成功 ✓','ok');
+    }).catch(function(err){
+      log('订阅失败：'+(err&&err.message?err.message:err),'err');
+    });
+  }
+
+  /* ---------- 云端推送 ---------- */
+  function sendCloud(tag,label){
+    if(!sub){log('请先订阅','err');return;}
+    var now=new Date();
+    var hh=('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2)+':'+('0'+now.getSeconds()).slice(-2);
+    var payload={
+      type:'test', tag:tag,
+      title:'今天 · 测试提醒',
+      body:label+'（'+hh+'）。收到说明推送链路正常。',
+      icon:'icon-192.png', url:'./'
+    };
+    log('请求云端发送：'+label+' …','info');
+    fetch(API+'/push/send',{
+      method:'POST',
+      headers:{'x-api-token':TOKEN,'Content-Type':'application/json'},
+      body:JSON.stringify({subscription:sub.toJSON?sub.toJSON():sub, payload:payload})
+    }).then(function(resp){
+      if(resp.status===410)throw new Error('订阅已过期(410)，请重新订阅');
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      return resp.json().catch(function(){return {};});
+    }).then(function(){
+      log('云端已发送 ✓ 请查看手机/电脑通知栏','ok');
+    }).catch(function(err){
+      log('云端推送失败：'+(err&&err.message?err.message:err),'err');
+    });
+  }
+
+  /* ---------- 本地通知合并 ---------- */
+  function localDemo(){
+    readyReg().then(function(r){
+      var opt={body:'相同标记，连发 3 次，通知栏应只有 1 条',icon:'icon-192.png',badge:'icon-192.png',tag:'local_demo',renotify:false};
+      return r.showNotification('今天 · 合并演示 1',opt)
+       .then(function(){return r.showNotification('今天 · 合并演示 2',opt);})
+       .then(function(){return r.showNotification('今天 · 合并演示 3（替换上面）',opt);})
+       .then(function(){return r.showNotification('今天 · 另一条',{body:'不同标记，应单独再出现 1 条',icon:'icon-192.png',tag:'local_other',renotify:false});});
+    }).then(function(){
+      log('本地通知已弹出（同标记 3 + 不同标记 1）','ok');
+    }).catch(function(err){
+      log('本地通知失败：'+(err&&err.message?err.message:err),'err');
+    });
+  }
+
+  /* ---------- 绑定 ---------- */
+  $('btnSub').addEventListener('click',subscribe);
+  $('btnSend').addEventListener('click',function(){sendCloud('jintian_test','测试推送 A');});
+  $('btnSendSame').addEventListener('click',function(){sendCloud('jintian_test','测试推送 A（相同标记）');});
+  $('btnSendDiff').addEventListener('click',function(){sendCloud('jintian_test_'+Date.now(),'测试推送 B（不同标记）');});
+  $('btnLocal').addEventListener('click',localDemo);
+  $('btnClear').addEventListener('click',function(){$('log').innerHTML='';});
+
+  renderChecks();
+  log('测试页已加载','info');
+  if('serviceWorker' in navigator){
+    readyReg().then(function(r){
+      reg=r;
+      return r.pushManager.getSubscription();
+    }).then(function(s){
+      showSub(s);
+      if(s)log('检测到已有订阅，可直接发测试推送','ok');
+      renderChecks();
+    }).catch(function(e){
+      log('Service Worker 注册失败：'+(e&&e.message?e.message:e),'err');
+    });
+  }
+})();
+</script>
+</body>
+</html>
