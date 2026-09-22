@@ -1,5 +1,5 @@
 /* 今天 App Service Worker - 离线缓存 + Web Push */
-const CACHE_NAME='jintian-v20260921-4';
+const CACHE_NAME='jintian-v20260922-1';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(ASSETS)})),self.skipWaiting()});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))})),self.clients.claim()});
@@ -28,8 +28,12 @@ self.addEventListener('push',function(e){
   var title=data.title||'今天';
   var body=data.body||data.message||'';
   var action=data.action||data.type||'';
+  // 同一提醒带相同 tag，系统只保留/更新一条，避免本地与云端、多次轮询造成重复通知
+  var tag=data.tag||('jintian_'+(data.type||'notice'));
   e.waitUntil(self.registration.showNotification(title,{
     body:body,
+    tag:tag,
+    renotify:false,
     icon:'./icon.png',
     badge:'./icon.png',
     data:{url:'./',action:action}
