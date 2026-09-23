@@ -1,8 +1,23 @@
 /* 今天 App Service Worker - 离线缓存 + Web Push */
-const CACHE_NAME='jintian-v20260923-8';
+const CACHE_NAME='jintian-v20260923-9';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(ASSETS)})),self.skipWaiting()});
-self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))})),self.clients.claim()});
+self.addEventListener('activate',function(e){
+  e.waitUntil(
+    caches.keys().then(function(ks){
+      return Promise.all(ks.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))
+    }).then(function(){
+      return self.clients.claim();
+    }).then(function(){
+      // 激活后强制刷新所有客户端
+      return self.clients.matchAll({type:'window'}).then(function(clients){
+        clients.forEach(function(client){
+          client.navigate(client.url);
+        });
+      });
+    })
+  );
+});
 self.addEventListener('fetch',function(e){
   if(e.request.method!=='GET')return;
   // 导航请求（打开页面）优先网络，保证拿到最新版
