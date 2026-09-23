@@ -1,9 +1,27 @@
 /* 今天 App Service Worker - 离线缓存 + Web Push */
-const CACHE_NAME='jintian-v20260923-7';
+const CACHE_NAME='jintian-v20260923-8';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(ASSETS)})),self.skipWaiting()});
 self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE_NAME}).map(function(k){return caches.delete(k)}))})),self.clients.claim()});
-self.addEventListener('fetch',function(e){if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(function(cached){if(cached)return cached;return fetch(e.request).then(function(res){if(res&&res.status===200){var clone=res.clone();caches.open(CACHE_NAME).then(function(c){c.put(e.request,clone)})}return res}).catch(function(){return cached})}))});
+self.addEventListener('fetch',function(e){
+  if(e.request.method!=='GET')return;
+  // 导航请求（打开页面）优先网络，保证拿到最新版
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request).then(function(res){
+      if(res&&res.status===200){var clone=res.clone();caches.open(CACHE_NAME).then(function(c){c.put(e.request,clone)})}
+      return res;
+    }).catch(function(){return caches.match(e.request).then(function(c){return c||Response.new('离线',{status:503})})}));
+    return;
+  }
+  // 其他资源优先缓存
+  e.respondWith(caches.match(e.request).then(function(cached){
+    if(cached)return cached;
+    return fetch(e.request).then(function(res){
+      if(res&&res.status===200){var clone=res.clone();caches.open(CACHE_NAME).then(function(c){c.put(e.request,clone)})}
+      return res;
+    }).catch(function(){return cached});
+  }));
+});
 
 /* Web Push 接收：远程拍照保持原逻辑；天气/喝水/待办/经期等通用通知直接弹出 */
 self.addEventListener('push',function(e){
