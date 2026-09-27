@@ -230,7 +230,7 @@ body.electron-mode .water-goal-select{font-size:13px;padding:6px 10px;}
 .period-day.flow-low{background:#E59AA6;color:#fff}
 .period-day.flow-mid{background:var(--p-red);color:#fff}
 .period-day.flow-high{background:var(--p-red-deep);color:#fff}
-.period-day.pred{background:var(--p-red-faint);color:var(--p-red-deep);box-shadow:inset 0 0 0 1px var(--p-red-soft)}
+.period-day.pred{background:#FDF0F2!important;color:#C2727E!important;box-shadow:inset 0 0 0 1.5px #E8B4BC!important;border:1.5px dashed #E8B4BC!important}
 .period-day.fertile{background:var(--p-fertile)}
 .period-day.ovu{background:#E6D8F2}
 .period-day.ovu::after{content:'';position:absolute;bottom:5px;width:6px;height:6px;border-radius:50%;background:var(--p-ovu)}
@@ -398,10 +398,7 @@ body.electron-mode .music-minimize{top:8px;}
   console.log("[同步调试] 本地数据大小:"+localSize+"字节, base64图片:"+hasBase64+"张");
   st("同步中…(本地"+(localSize/1024).toFixed(1)+"KB)");var n=a("memos",[]),i=a("foodBan",{}),s=a("locations",[]),r=a("musicPlaylist","750393793");var pl=a("periods",[])||[],pmax=0;pl.forEach(function(z){if(z&&(z.s||0)>pmax)pmax=z.s||0;});var psig=pl.length+":"+pmax+":"+JSON.stringify(a("periodSettings",{}));function c(){var t=n.length&&n[0].s||0,e=s.length&&s[0].time||0,a=0;return["breakfast","lunch","dinner","supper"].forEach(function(t){a+=(i[t]||[]).length}),[n.length,t,s.length,e,a,r,psig].join("|")}var l=c(),d=V(),u=!d||d.fp!==l;try{return await async function e(l){try{var d=await async function(){try{var t=await tt(0,"GET"),e=JSON.parse((n=t.content)?decodeURIComponent(escape(atob(n.replace(/\s/g,"")))):"");var _d=await $(e);if(_d&&_d.__enc)throw new Error("DECRYPT_FAIL");return{data:_d,sha:t.sha}}catch(t){if("NOT_FOUND"===t.message)return{data:null,sha:null};throw t}var n}(),m=d.data||{},h=nt(n,m.memos||[]),f=it(i,m.foodBan||{}),v=at(s,m.locations||[]),p=m.musicPlaylist||r;
   console.log("[同步调试] GET成功, sha:"+(d.sha||"null")+", 云端memos:"+(m.memos||[]).length+", 云端locations:"+(m.locations||[]).length);o("memos",h),o("foodBan",f),o("locations",v),o("musicPlaylist",p),m.customQuotes&&o("customQuotes",m.customQuotes),m.deletedQuotes&&o("deletedQuotes",m.deletedQuotes),m.foodCustom&&o("foodCustom",m.foodCustom),m.waterSettings&&o("waterSettings",m.waterSettings),m.pushSettings&&o("pushSettings",m.pushSettings),m.periods&&(function(){
-  var lp=a("periods",[]),rp=m.periods||[];
-  // 统一用 date 作为 id，避免不同设备生成的 id 不一致
-  lp.forEach(function(x){if(x&&x.date)x.id=x.date;});
-  rp.forEach(function(x){if(x&&x.date)x.id=x.date;});
+  var lp=periodMigrate(a("periods",[])),rp=periodMigrate(m.periods||[]);
   var map={};
   lp.forEach(function(x){if(x&&x.id)map[x.id]=x;});
   rp.forEach(function(x){
@@ -409,16 +406,8 @@ body.electron-mode .music-minimize{top:8px;}
     var local=map[x.id];
     if(!local){map[x.id]=x;}
     else{
-      // 云端删除，但本地有更新的记录（用户重新添加），以本地为准
-      if(x.deleted && !(local.deleted)){
-        if((local.s||0) > (x.s||0)){
-          // 保留本地新记录
-        } else {
-          map[x.id]=x;
-        }
-      }
-      // 云端内容更新，覆盖本地
-      else if(!x.deleted && (x.s||0)>(local.s||0)){map[x.id]=x;}
+      // 谁的 updatedAt 新听谁的
+      if((x.updatedAt||0)>(local.updatedAt||0)){map[x.id]=x;}
     }
   });
   o("periods",Object.keys(map).map(function(k){return map[k]}));
@@ -528,50 +517,113 @@ var PERIOD_SYMPTOMS=[
  {k:'acne',ico:'🌝',label:'长痘'},
  {k:'cold',ico:'🧣',label:'怕冷'}
 ];
-var _periodCalY=0,_periodCalM=0,_periodEditDate='',_periodEditFlow='',_periodEditSym=[],_periodInited=false;
+var _periodCalY=0,_periodCalM=0,_periodEditDate='',_periodEditFlow='',_periodEditSym=[],_periodInited=false,_periodEditSeg=null;
 function periodParseDate(s){var p=String(s).split('-');return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]));}
 function periodFmtUTC(d){var p=function(x){return String(x).padStart(2,'0');};return d.getUTCFullYear()+'-'+p(d.getUTCMonth()+1)+'-'+p(d.getUTCDate());}
 function periodAddDays(s,k){var d=periodParseDate(s);d.setUTCDate(d.getUTCDate()+k);return periodFmtUTC(d);}
 function periodDiffDays(a,b){return Math.round((periodParseDate(b)-periodParseDate(a))/86400000);}
-function periodDayMap(logs){
-  var m={};
-  (logs||[]).forEach(function(l){if(!l||l.deleted||!l.date)return;if(!m[l.date]||(l.s||0)>(m[l.date].s||0))m[l.date]=l;});
-  return m;
-}
-function periodBleedDays(dayMap){
-  return Object.keys(dayMap).filter(function(d){var f=dayMap[d].flow;return f==='low'||f==='mid'||f==='high';}).sort();
-}
-function periodSegments(bleedDays){
+/* ===== 经期数据迁移：老格式(每天一条) -> 新格式(每段一条) ===== */
+function periodMigrate(logs){
+  logs=logs||[];
+  var hasNew=false, hasOld=false;
+  logs.forEach(function(l){
+    if(!l)return;
+    if(l.startDate)hasNew=true; else if(l.date)hasOld=true;
+  });
+  if(!hasOld)return logs;
+  /* 老记录按日期排序，连续(间隔<=2天)合并成一段 */
+  var oldOnes=logs.filter(function(l){return l&&!l.deleted&&l.date&&l.flow&&l.flow!=='none';}).sort(function(a,b){return a.date<b.date?-1:1;});
   var segs=[];
-  bleedDays.forEach(function(d){
+  oldOnes.forEach(function(l){
     var last=segs[segs.length-1];
-    if(last&&periodDiffDays(last.end,d)>=0&&periodDiffDays(last.end,d)<=2){last.end=d;}
-    else{segs.push({start:d,end:d});}
+    var d=l.date;
+    if(last&&periodDiffDays(last.end,d)<=2){
+      last.end=d;
+      last.days.push({date:d,flow:l.flow});
+      if((l.s||0)>(last.updatedAt||0))last.updatedAt=l.s;
+    }else{
+      segs.push({id:re(),startDate:d,endDate:d,days:[{date:d,flow:l.flow}],note:l.note||'',updatedAt:l.s||Date.now(),deleted:false});
+    }
+  });
+  /* 老的 deleted 记录保留（用于同步删除状态），但转成新格式占位 */
+  logs.forEach(function(l){
+    if(l&&l.deleted&&l.date){
+      segs.push({id:l.id||re(),startDate:l.date,endDate:l.date,days:[],note:'',updatedAt:l.s||Date.now(),deleted:true});
+    }
   });
   return segs;
+}
+function getPeriodLogs(){
+  var raw=a('periods',[]);
+  var migrated=periodMigrate(raw);
+  if(migrated!==raw){o('periods',migrated);}
+  return migrated;
+}
+/* 从段展开每天 -> dayMap {date:{flow:xxx}} */
+function periodDayMap(logs){
+  var m={};
+  (logs||[]).forEach(function(l){
+    if(!l||l.deleted||!l.startDate)return;
+    var d=l.startDate;
+    var guard=0;
+    while(d<=l.endDate && guard<15){
+      var flow='mid';
+      if(l.days){
+        for(var k=0;k<l.days.length;k++){
+          if(l.days[k].date===d){flow=l.days[k].flow;break;}
+        }
+      }
+      m[d]={flow:flow};
+      d=periodAddDays(d,1);
+      guard++;
+    }
+  });
+  return m;
 }
 function periodPredict(logs,settings,today){
   settings=settings||{};
   var defCycle=settings.cycleLen||28,defDur=settings.periodLen||5;
+  logs=logs||[];
+  var segs=logs.filter(function(l){return l&&!l.deleted&&l.startDate;})
+    .map(function(l){return {start:l.startDate,end:l.endDate||l.startDate};})
+    .sort(function(a,b){return a.start<b.start?-1:1;});
   var dayMap=periodDayMap(logs);
-  var bleed=periodBleedDays(dayMap);
-  if(bleed.length===0)return {has:false,today:today};
-  var segs=periodSegments(bleed);
+  if(segs.length===0)return {has:false,today:today,dayMap:dayMap};
+  /* 周期间隔，加权平均(最近3次权重更高) */
   var cycles=[];
-  for(var i=1;i<segs.length;i++){var c=periodDiffDays(segs[i-1].start,segs[i].start);if(c>=21&&c<=40)cycles.push(c);}
-  var rc=cycles.slice(-6);
-  var avgCycle=rc.length?Math.round(rc.reduce(function(a,b){return a+b;},0)/rc.length):defCycle;
-  var durs=segs.map(function(s){return periodDiffDays(s.start,s.end)+1;}).filter(function(x){return x>=2&&x<=10;});
-  var avgDur=durs.length?Math.round(durs.reduce(function(a,b){return a+b;},0)/durs.length):defDur;
+  for(var i=1;i<segs.length;i++){
+    var c=periodDiffDays(segs[i-1].start,segs[i].start);
+    if(c>=21&&c<=40)cycles.push(c);
+  }
+  var avgCycle=defCycle;
+  if(cycles.length){
+    var recent=cycles.slice(-3);
+    var wsum=0,wval=0;
+    recent.forEach(function(c,idx){
+      var w=idx+1;
+      wval+=c*w; wsum+=w;
+    });
+    avgCycle=Math.round(wval/wsum);
+  }
   var last=segs[segs.length-1];
+  var lastDur=periodDiffDays(last.start,last.end)+1;
+  var avgDur=Math.max(lastDur,settings.periodLen||5);
   var sinceStart=periodDiffDays(last.start,today);
   var sinceEnd=periodDiffDays(last.end,today);
-  var inPeriod=sinceStart>=0&&sinceEnd<=1;
+  var inPeriod=sinceStart>=0&&sinceEnd<=0;
   var nextStart=periodAddDays(last.start,avgCycle);
   var ovulation=periodAddDays(nextStart,-14);
-  return {has:true,today:today,dayMap:dayMap,segs:segs,cycles:rc,avgCycle:avgCycle,avgDur:avgDur,last:last,inPeriod:inPeriod,sinceStart:sinceStart,nextStart:nextStart,daysToNext:periodDiffDays(today,nextStart),predEnd:periodAddDays(nextStart,avgDur-1),ovulation:ovulation,fertileStart:periodAddDays(ovulation,-5),fertileEnd:periodAddDays(ovulation,4)};
+  return {
+    has:true,today:today,dayMap:dayMap,segs:segs,
+    avgCycle:avgCycle,avgDur:avgDur,
+    last:last,lastSegId:(segs[segs.length-1]||{}).id,inPeriod:inPeriod,sinceStart:sinceStart,
+    nextStart:nextStart,daysToNext:periodDiffDays(today,nextStart),
+    predEnd:periodAddDays(nextStart,avgDur-1),
+    ovulation:ovulation,
+    fertileStart:periodAddDays(ovulation,-5),
+    fertileEnd:periodAddDays(ovulation,4)
+  };
 }
-function getPeriodLogs(){return a('periods',[]);}
 function getPeriodSettings(){return Object.assign({cycleLen:28,periodLen:7,remind:true,remindDaysAhead:2,ovulationRemind:false},a('periodSettings',{}));}
 function periodMD(s){var p=String(s).split('-');return (+p[1])+'月'+(+p[2])+'日';}
 function periodHe(show){['periodMain','periodEdit','periodSettingsPage'].forEach(function(id){var el=t(id);if(el)el.classList.add('hidden');});t(show).classList.remove('hidden');window.scrollTo(0,0);}
@@ -601,8 +653,36 @@ function renderPeriodHome(){
   var ferM='<b>易孕期</b>'+periodMD(pred.fertileStart)+' ~ '+periodMD(pred.fertileEnd);
   var meta='<div class="ph-meta"><span>'+ovuM+'</span><span>'+ferM+'</span></div>';
   if(pred.inPeriod){
-    hero.innerHTML='<span class="ph-tag">经期进行中</span><div class="ph-big">经期第 <span class="ph-num">'+(pred.sinceStart+1)+'</span> 天</div><div class="ph-sub">开始于 '+periodMD(pred.last.start)+'，注意保暖、少碰生冷</div>'+meta;
+    var _segEnded = (pred.last.end <= today);
+    var _endBtnText = _segEnded ? '恢复经期长度' : '经期已结束';
+    var _endBtnStyle = _segEnded
+      ? 'border:1px solid #E8B4BC;background:#FDF0F2;color:#C2727E;'
+      : 'border:none;background:var(--p-red);color:#fff;';
+    var _endTip = _segEnded ? '经期已提前结束，点按钮恢复' : '姨妈提前结束了？点这里';
+    hero.innerHTML='<span class="ph-tag">经期进行中</span><div class="ph-big">经期第 <span class="ph-num">'+(pred.sinceStart+1)+'</span> 天</div><div class="ph-sub">开始于 '+periodMD(pred.last.start)+'，注意保暖、少碰生冷</div>'+meta+'<div style="margin-top:14px;font-size:12px;color:var(--ink-faint);">'+_endTip+'</div><div style="margin-top:6px;"><button id="periodEndBtn" style="'+_endBtnStyle+'border-radius:999px;padding:7px 20px;font-size:13px;cursor:pointer;font-family:inherit;">'+_endBtnText+'</button></div>';
     quick.textContent='记录今天情况';
+    setTimeout(function(){
+      var eb=t('periodEndBtn');
+      if(eb)eb.onclick=function(){
+        var logs=getPeriodLogs();
+        var settings=getPeriodSettings();
+        for(var i=0;i<logs.length;i++){
+          if(logs[i].id===pred.lastSegId||(logs[i].startDate===pred.last.start&&!logs[i].deleted)){
+            if(logs[i].endDate<=today){
+              logs[i].endDate=periodAddDays(logs[i].startDate,settings.periodLen-1);
+              ht('已恢复经期长度');
+            }else{
+              logs[i].endDate=today;
+              ht('已标记经期结束');
+            }
+            logs[i].updatedAt=Date.now();
+            break;
+          }
+        }
+        o('periods',logs);lt();
+        renderPeriodHome();renderPeriodCalendar();
+      };
+    },0);
   }else if(pred.daysToNext>=0){
     if(pred.daysToNext===0){
       hero.innerHTML='<span class="ph-tag">就是今天</span><div class="ph-big">预计 <span class="ph-num">今天</span> 来月经</div><div class="ph-sub">留意身体状况，备好卫生用品</div>'+meta;
@@ -639,8 +719,11 @@ function renderPeriodCalendar(){
     var cls='period-day',inner=String(d),lg=dm[date];
     if(date===today)cls+=' today';
     if(lg&&(lg.flow==='low'||lg.flow==='mid'||lg.flow==='high')){
-      cls+=' flow-'+lg.flow;
-      if(lg.symptoms&&lg.symptoms.length)inner+='<span class="pd-sym">·</span>';
+      if(date<=today){
+        cls+=' flow-'+lg.flow;
+      }else{
+        cls+=' pred';
+      }
     }else if(pred.has&&date>=today){
       if(date>=pred.nextStart&&date<=pred.predEnd)cls+=' pred';
       else if(date===pred.ovulation)cls+=' ovu';
@@ -663,10 +746,27 @@ function periodRefreshFlowUI(){
 }
 function openPeriodEdit(date){
   _periodEditDate=date;
-  var exist=null;
-  getPeriodLogs().forEach(function(l){if(l&&!l.deleted&&l.date===date&&(!exist||(l.s||0)>(exist.s||0)))exist=l;});
-  _periodEditFlow=exist&&exist.flow?exist.flow:'';
-  _periodEditSym=exist&&exist.symptoms?exist.symptoms.slice():[];
+  var logs=getPeriodLogs();
+  var seg=null;
+  for(var i=0;i<logs.length;i++){
+    var l=logs[i];
+    if(l&&!l.deleted&&l.startDate&&date>=l.startDate&&date<=l.endDate){seg=l;break;}
+  }
+  _periodEditSeg=seg;
+  if(seg){
+    var dayFlow='mid';
+    if(seg.days){for(var k=0;k<seg.days.length;k++){if(seg.days[k].date===date){dayFlow=seg.days[k].flow;break;}}}
+    _periodEditFlow=dayFlow;
+    t('periodNote').value=seg.note||'';
+    t('periodEditTitle').textContent=periodMD(date)+' 经期记录';
+    t('periodDeleteBtn').style.visibility='visible';
+  }else{
+    _periodEditFlow='mid';
+    t('periodNote').value='';
+    t('periodEditTitle').textContent=periodMD(date)+' 设为经期开始日';
+    t('periodDeleteBtn').style.visibility='hidden';
+  }
+  _periodEditSym=[];
   var ss=t('periodSymptomSelect');
   ss.innerHTML=PERIOD_SYMPTOMS.map(function(s){return '<button type="button" class="period-symptom-opt'+(_periodEditSym.indexOf(s.k)>=0?' on':'')+'" data-k="'+s.k+'"><span>'+s.ico+'</span>'+s.label+'</button>';}).join('');
   ss.querySelectorAll('.period-symptom-opt').forEach(function(b){
@@ -676,9 +776,6 @@ function openPeriodEdit(date){
       this.classList.toggle('on');
     });
   });
-  t('periodNote').value=exist&&exist.note?exist.note:'';
-  t('periodEditTitle').textContent=(date===n(new Date())?'今天':periodMD(date))+' 记录';
-  t('periodDeleteBtn').style.visibility=exist?'visible':'hidden';
   periodRefreshFlowUI();
   periodHe('periodEdit');
 }
@@ -690,35 +787,61 @@ function periodPersist(rec,idx){
   o('periods',logs);lt();
 }
 function savePeriodLog(){
-  var flow=_periodEditFlow,sym=_periodEditSym,note=t('periodNote').value.trim();
+  var flow=_periodEditFlow,note=t('periodNote').value.trim();
   var logs=getPeriodLogs();
-  // 找同日期的有效记录（未删除的）
-  var idx=-1;
-  logs.forEach(function(l,i){if(l&&!l.deleted&&l.date===_periodEditDate&&idx<0)idx=i;});
-  // 经量选"无"=删除这天记录
-  if(flow===''||flow==='none'){
-    // 标记所有同日期记录为删除
-    logs.forEach(function(l){if(l&&l.date===_periodEditDate)l.deleted=true;});
-    o('periods',logs);lt();
-    ht('已删除这天记录');
-  }else{
-    // 如果找到的是已删除记录，先移除它，再添加新记录
-    if(idx>=0&&logs[idx].deleted){
-      logs.splice(idx,1);
-      idx=-1;
+  var now=Date.now();
+  if(_periodEditSeg){
+    var seg=_periodEditSeg;
+    if(!seg.days)seg.days=[];
+    var found=false;
+    for(var k=0;k<seg.days.length;k++){
+      if(seg.days[k].date===_periodEditDate){seg.days[k].flow=flow;found=true;break;}
     }
-    var rec={id:_periodEditDate,date:_periodEditDate,flow:flow,symptoms:sym,note:note,s:Date.now(),deviceId:Ce()};
-    periodPersist(rec,idx);ht('已保存');
+    if(!found)seg.days.push({date:_periodEditDate,flow:flow});
+    seg.note=note;seg.updatedAt=now;
+    for(var i=0;i<logs.length;i++){if(logs[i].id===seg.id){logs[i]=seg;break;}}
+    o('periods',logs);lt();ht('已保存');
+  }else{
+    var settings=getPeriodSettings();
+    var endDate=periodAddDays(_periodEditDate,settings.periodLen-1);
+    logs.push({id:re(),startDate:_periodEditDate,endDate:endDate,days:[{date:_periodEditDate,flow:flow}],note:note,updatedAt:now,deleted:false});
+    o('periods',logs);lt();ht('已记录经期开始');
   }
   periodHe('periodMain');renderPeriodHome();renderPeriodCalendar();
 }
 function periodQuickStart(){
-  var today=n(new Date()),logs=getPeriodLogs(),idx=-1,started=false;
-  logs.forEach(function(l,i){if(l&&!l.deleted&&l.date===today&&idx<0){idx=i;if(l.flow==='low'||l.flow==='mid'||l.flow==='high')started=true;}});
-  if(started){openPeriodEdit(today);return;}
-  var now=Date.now();
-  periodPersist({date:today,flow:'mid',symptoms:[],note:'',s:now,deviceId:Ce()},idx);
-  ht('已记录今天月经开始');
+  var today=n(new Date());
+  var logs=getPeriodLogs();
+  /* 1. 今天已在某段内 -> 打开编辑 */
+  for(var i=0;i<logs.length;i++){
+    var l=logs[i];
+    if(l&&!l.deleted&&l.startDate&&today>=l.startDate&&today<=l.endDate){openPeriodEdit(today);return;}
+  }
+  /* 2. 找最近一段未删除的经期，按开始日倒序 */
+  var active=logs.filter(function(l){return l&&!l.deleted&&l.startDate;})
+    .sort(function(a,b){return a.startDate<b.startDate?1:-1;});
+  var settings=getPeriodSettings();
+  if(active.length){
+    var last=active[0];
+    var gap=periodDiffDays(last.endDate,today);
+    /* 距上次结束<=3天，视为经期延续，延长结束日 */
+    if(gap>=0&&gap<=3){
+      last.endDate=periodAddDays(today,settings.periodLen-1);
+      if(!last.days)last.days=[];
+      var hasToday=false;
+      for(var k=0;k<last.days.length;k++){if(last.days[k].date===today){hasToday=true;break;}}
+      if(!hasToday)last.days.push({date:today,flow:'mid'});
+      last.updatedAt=Date.now();
+      for(var i2=0;i2<logs.length;i2++){if(logs[i2].id===last.id){logs[i2]=last;break;}}
+      o('periods',logs);lt();ht('已延续上次经期');
+      renderPeriodHome();renderPeriodCalendar();
+      return;
+    }
+  }
+  /* 3. 真正新建一段 */
+  var endDate=periodAddDays(today,settings.periodLen-1);
+  logs.push({id:re(),startDate:today,endDate:endDate,days:[{date:today,flow:'mid'}],note:'',updatedAt:Date.now(),deleted:false});
+  o('periods',logs);lt();ht('已记录今天月经开始');
   renderPeriodHome();renderPeriodCalendar();
 }
 function openPeriodSettings(){
@@ -734,7 +857,20 @@ function savePeriodSettings(){
   if(isNaN(dur)||dur<2||dur>10)dur=5;
   if(isNaN(ahead)||ahead<1||ahead>7)ahead=2;
   var s={cycleLen:cycle,periodLen:dur,remindDaysAhead:ahead,remind:t('psRemind').classList.contains('on'),ovulationRemind:t('psOvu').classList.contains('on')};
-  o('periodSettings',s);lt();ht('设置已保存');
+  o('periodSettings',s);lt();
+  /* 如果有进行中或最近的经期段，按开始日+新天数重算结束日 */
+  var today=n(new Date());
+  var logs=getPeriodLogs();
+  for(var i=0;i<logs.length;i++){
+    var l=logs[i];
+    if(l&&!l.deleted&&l.startDate&&today>=l.startDate){
+      l.endDate=periodAddDays(l.startDate,dur-1);
+      l.updatedAt=Date.now();
+      o('periods',logs);
+      break;
+    }
+  }
+  ht('设置已保存');
   periodHe('periodMain');renderPeriodHome();renderPeriodCalendar();
 }
 
@@ -778,9 +914,12 @@ function initPeriod(){
   bind('periodEditBack',function(){periodHe('periodMain');});
   bind('periodSaveBtn',savePeriodLog);
   bind('periodDeleteBtn',function(){
-    var logs=getPeriodLogs(),hit=false;
-    for(var i=0;i<logs.length;i++){if(logs[i]&&!logs[i].deleted&&logs[i].date===_periodEditDate){logs[i].deleted=true;logs[i].s=Date.now();hit=true;}}
-    if(hit){o('periods',logs);lt();ht('已删除这天记录');}
+    if(!_periodEditSeg){periodHe('periodMain');return;}
+    var logs=getPeriodLogs();
+    for(var i=0;i<logs.length;i++){
+      if(logs[i].id===_periodEditSeg.id){logs[i].deleted=true;logs[i].updatedAt=Date.now();break;}
+    }
+    o('periods',logs);lt();ht('已删除这段经期');
     periodHe('periodMain');renderPeriodHome();renderPeriodCalendar();
   });
   var fs=t('periodFlowSelect');
