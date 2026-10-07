@@ -1,5 +1,5 @@
 /* 今天 App Service Worker - 离线缓存 + Web Push */
-const CACHE_NAME='jintian-v20260929-3';
+const CACHE_NAME='jintian-v20261007-1';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',function(e){e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(ASSETS)})),self.skipWaiting()});
 self.addEventListener('activate',function(e){
@@ -20,6 +20,8 @@ self.addEventListener('activate',function(e){
 });
 self.addEventListener('fetch',function(e){
   if(e.request.method!=='GET')return;
+  // 同步请求（云端 sync 数据）绝不缓存、绝不拦截，永远走网络，防止各设备缓存旧数据互相覆盖
+  if(e.request.url.indexOf('tencentscf.com')>=0)return;
   // 导航请求（打开页面）优先网络，保证拿到最新版
   if(e.request.mode==='navigate'){
     e.respondWith(fetch(e.request).then(function(res){
